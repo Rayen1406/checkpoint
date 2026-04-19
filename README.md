@@ -83,3 +83,96 @@ Set in backend `.env`:
   - Green: on time
   - Red: missed
   - Yellow: pending/current
+
+## Host Publicly From This PC (Windows)
+
+This project can be hosted directly from your computer so anyone on the internet can access it.
+
+### 1. Prepare backend env
+
+In `backend/.env`:
+
+- Set `HOST=0.0.0.0`
+- Keep `PORT=4000`
+- Set a strong `JWT_SECRET`
+- Change `ADMIN_USERNAME` and `ADMIN_PASSWORD` from defaults
+- Optional: set `CLIENT_ORIGIN` to your public URL (or leave empty to allow all)
+
+### 2. Build frontend once
+
+From `frontend`:
+
+- `npm install`
+- `npm run build`
+
+### 3. Run backend continuously with PM2
+
+From `backend`:
+
+- `npm install`
+- `pm2 start src/server.js --name checkpoint-backend`
+- `pm2 save`
+
+### 4. Expose to internet (recommended: Cloudflare Tunnel, no router setup)
+
+Install and run tunnel:
+
+- `winget install --id Cloudflare.cloudflared -e`
+- `cloudflared tunnel --url http://localhost:4000`
+
+Cloudflare prints a public `https://...trycloudflare.com` URL. Share that URL.
+
+### 5. Optional alternative: direct port forwarding
+
+If you use your own public IP/domain instead of tunnel:
+
+- Allow inbound TCP `4000` in Windows Firewall
+- Port-forward router WAN `4000` -> this PC `4000`
+- Set `CLIENT_ORIGIN=https://your-domain-or-ip`
+
+### 6. Verify
+
+Open these from another network:
+
+- `https://your-public-url/api/health`
+- `https://your-public-url/`
+
+## Telegram URL On PC Startup
+
+You can auto-send the live public URL to Telegram every time this PC starts.
+
+### 1. Create a Telegram bot and get chat id
+
+- Open Telegram and message `@BotFather`
+- Run `/newbot` and copy the bot token
+- Start a chat with your bot and send one message (for example: `hi`)
+- Get your chat id by opening:
+  - `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+  - copy `chat.id` from the JSON response
+
+### 2. Set env values in `backend/.env`
+
+- `TELEGRAM_BOT_TOKEN=...`
+- `TELEGRAM_CHAT_ID=...`
+- `PUBLIC_PORT=4000`
+- Optional: `PUBLIC_SUBDOMAIN=...`
+
+### 3. Run both backend + notifier with PM2
+
+From `backend`:
+
+- `pm2 delete checkpoint-backend checkpoint-tunnel-notifier`
+- `pm2 start ecosystem.config.cjs`
+- `pm2 save`
+
+### 4. Ensure PM2 auto-starts on Windows boot
+
+Run once:
+
+- `pm2-startup install`
+
+After reboot, PM2 starts both apps. The notifier creates a tunnel and sends the URL to your Telegram.
+
+### 5. Check logs
+
+- `pm2 logs checkpoint-tunnel-notifier --lines 100`

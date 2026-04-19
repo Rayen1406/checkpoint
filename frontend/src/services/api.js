@@ -1,5 +1,20 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
+function getDefaultApiBaseUrl() {
+  if (typeof window === "undefined") {
+    return "http://localhost:4000/api";
+  }
+
+  const { protocol, hostname, port } = window.location;
+  const isViteDevHost =
+    (hostname === "localhost" || hostname === "127.0.0.1") && port === "5173";
+
+  if (isViteDevHost) {
+    return "http://localhost:4000/api";
+  }
+
+  return `${protocol}//${window.location.host}/api`;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl();
 
 async function request(path, options = {}) {
   const { headers: customHeaders, ...restOptions } = options;
